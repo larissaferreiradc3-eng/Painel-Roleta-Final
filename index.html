@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Análise de Roleta</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Painel de Análise de Roleta</h1>
+
+        <section id="passo0">
+            <h2>0. Identificação da Sessão</h2>
+            <input type="text" id="sessionIDInput" placeholder="Digite seu nome ou ID de sessão (ex: Mesa 1)">
+            <button id="btnIniciarSessao">INICIAR SESSÃO</button>
+            <p id="roletaAtualDisplay">Sessão Atual: <span id="currentSessionName">Não Iniciada</span></p>
+        </section>
+
+        <section id="passo1">
+            <h2>1. Histórico Base (Mínimo de 100 números)</h2>
+            <textarea id="historicoBaseInput" rows="6" placeholder="Cole a sequência de números da roleta aqui, separados por vírgula, espaço ou quebra de linha (ex: 18, 5, 0, 21...)"></textarea>
+            <button id="btnCarregarBase">CARREGAR & SALVAR BASE</button>
+            
+            <div id="historicoTimeline" class="timeline">
+                <h3>Linha do Tempo Recente (30 Últimos Números)</h3>
+                <p id="historicoRecenteStatus"></p>
+            </div>
+            <p>Total de Rodadas Carregadas: <span id="totalRodadas">0</span></p>
+        </section>
+
+        <section id="passo2"> 
+            <h2>2. Entrada Interativa e Análise</h2>
+            <p>Insira o número que acabou de sair (o clique atualiza o histórico e gera a análise):</p>
+            
+            <div id="gradeRoleta" class="grade-roleta">
+                </div>
+
+            <div id="analiseResultado">
+                <p id="statusDisplay" style="display: none;">Status: N/A</p>
+
+                <div id="divSinal">
+                    <h3>Sinal e Gatilho</h3>
+                    <p id="detalhesSinal">Aguardando Histórico Base</p>
+                    <p id="rodadasEspera">Apostar até 0 Rodadas</p>
+                </div>
+                
+                <div id="divAnalise">
+                    <h3>Alvos Sugeridos (Máximo 5 Fichas):</h3>
+                    <p id="alvosSugeridos">0</p>
+                    
+                    <h3>Detalhes da Análise</h3>
+                    <p id="neraDetalhes">NERA (Repetição): N/A</p>
+                    <p id="sgrDetalhes">SGR (Sequência): N/A</p>
+                    <p id="sugestoesAdicionais">Sugestões Adicionais: 0</p>
+                </div>
+            </div>
+        </section>
+        
+        <div id="exibirErro" class="error-box" style="display: none;"></div>
+
+    </div>
+    
+    <script src="script.js"></script> 
+</body>
+</html>
