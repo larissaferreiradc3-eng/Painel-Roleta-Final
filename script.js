@@ -15,13 +15,13 @@ const CORES_ROLETA = {
     26: 'preto'
 };
 
-// Mapeamento de Vizinhos de Race (Exemplo simplificado, o real é um array de 37)
-// Exemplo: 12 tem 35 e 28 como vizinhos de race.
+// Mapeamento de Vizinhos de Race (PRECISA SER COMPLETO POR VOCÊ)
+// Números cruciais para o Gatilho Soma estão inclusos para teste.
 const VIZINHOS_RACE = {
-    0: [26, 32, 15], 1: [20, 33, 16], 2: [25, 21, 4], 3: [26, 35, 23], 4: [2, 21, 19],
-    // ... é necessário mapear todos os 37 números para ser 100% preciso
-    12: [35, 28], 13: [27, 36], 19: [15, 4, 21, 2, 25] // Exemplo
-    // ...
+    0: [3, 26, 32, 15], 1: [20, 33, 16], 2: [25, 21, 4], 3: [26, 35, 23], 4: [2, 21, 19],
+    12: [35, 28], 13: [27, 36], 15: [0, 32, 19], 17: [34, 6], 21: [2, 4, 19, 25], 24: [16, 33, 1],
+    27: [13, 36], 28: [12, 35], 32: [0, 15, 19], 35: [12, 28], 36: [13, 27]
+    // OBS: Complete o restante dos 37 números aqui para análise 100% precisa.
 };
 
 // --- FUNÇÕES AUXILIARES DE PROPRIEDADE ---
@@ -45,14 +45,10 @@ function getCor(numero) {
 }
 
 function getVizinhosRace(numero) {
-    // Retorna a lista de vizinhos (28 e 35 para 12 no exemplo do texto)
     return VIZINHOS_RACE[numero] || [];
 }
 
 // --- FUNÇÕES DE UTILIDADE E ARMAZENAMENTO ---
-
-// (Mantidas as funções de exibirStatus, exibirErro, salvarHistorico, carregarHistorico)
-// ... (código das funções de utilidade) ...
 
 function exibirDisplayStatus(mensagem, sucesso = false) {
     const statusSpan = document.getElementById('statusDisplay');
@@ -97,40 +93,48 @@ function carregarHistorico(sessao) {
     }
 }
 
-// --- FUNÇÕES DE ANÁLISE ESPECÍFICAS ---
+// --------------------------------------------------------------------------
+// --- FUNÇÕES DE ANÁLISE ESPECÍFICAS (GATILHOS) ---
+// --------------------------------------------------------------------------
 
 /**
- * 1. Lógica Larissa: Gatilho Soma por Dúzia/Cor
- * - Busca: 1 Vermelho da 3ª Dúzia (25/27/30/32/34/36) seguido de 2 Pretos da 2ª Dúzia (13/15/17/20/22/24)
- * - Ex: 27-13-17 (V3D - P2D - P2D)
+ * [span_3](start_span)Gatilho 1 - A Soma dos 3 Números (Larissa)[span_3](end_span)
+ * Sequência exata: Vermelho 3D -> Preto 2D -> Preto 2D
  */
-function analiseLarissa(historico) {
+function analiseSoma(historico) {
     if (historico.length < 3) return { alvo: null, razao: 'Aguardando sequência 3 números.' };
     
+    // N1 é o antepenúltimo, N2 é o penúltimo, N3 é o último
     const [n1, n2, n3] = historico.slice(-3);
     
-    // Condições Larissa
-    const c1_vermelho_3d = getCor(n1) === 'vermelho' && getDuzia(n1) === 3;
-    const c2_preto_2d = getCor(n2) === 'preto' && getDuzia(n2) === 2;
-    const c3_preto_2d = getCor(n3) === 'preto' && getDuzia(n3) === 2;
+    [span_4](start_span)// Condições Gatilho 1[span_4](end_span)
+    const n1_vermelho_3d = getCor(n1) === 'vermelho' && getDuzia(n1) === 3;
+    const n2_preto_2d = getCor(n2) === 'preto' && getDuzia(n2) === 2;
+    const n3_preto_2d = getCor(n3) === 'preto' && getDuzia(n3) === 2;
 
-    if (c1_vermelho_3d && c2_preto_2d && c3_preto_2d) {
+    if (n1_vermelho_3d && n2_preto_2d && n3_preto_2d) {
         const soma = n1 + n2 + n3;
         let alvo = soma;
         
-        // Redução da soma para um número entre 1 e 36
+        [span_5](start_span)// Redução da soma para um número entre 1 e 36[span_5](end_span)
         if (soma > 36) {
             alvo = String(soma).split('').reduce((acc, digit) => acc + parseInt(digit), 0);
-            if (alvo > 36) alvo = alvo % 37; // Caso extremo, garante o range.
+            // Verifica se a soma dos dígitos ainda é > 36 (o que é improvável com 3 números)
+            if (alvo > 36) {
+                 alvo = String(alvo).split('').reduce((acc, digit) => acc + parseInt(digit), 0);
+            }
         }
+        
+        // Se o alvo for 0 após a redução, ele é tratado como proteção, mas a jogada deve ser mantida.
+        if (alvo === 0) alvo = 12; // Regra de segurança/substituição para 0, se aplicável. Manteremos o 0 na proteção.
 
         const vizinhos = getVizinhosRace(alvo);
         
         return {
             alvo: alvo,
             vizinhos: vizinhos,
-            protecoes: [...vizinhos, 21, 0], // Alvo + Vizinhos + 21 + 0
-            razao: `Gatilho Larissa (Soma ${n1}+${n2}+${n3}=${soma}) -> Alvo ${alvo}`
+            protecoes: [21, 0], // Proteções adicionais conforme regra original
+            razao: `Gatilho 1 (Soma ${n1}+${n2}+${n3}=${soma}) -> Alvo ${alvo} + Vizinhos de Race`
         };
     }
     
@@ -138,29 +142,35 @@ function analiseLarissa(historico) {
 }
 
 /**
- * 2. Lógica Gabriel: Padrão Dúzia + Coluna (Sequência)
- * - Busca: Sequência de transição (ex: 1D+3C -> 3D+2C -> Próxima)
+ * [span_6](start_span)Gatilho 2 - Padrão de Dúzia + Coluna (Gabriel) [cite: 12-14]
+ * Busca: Sequência de transição (ex: 1D3C > 3D2C -> 2D1C)
  */
-function analiseGabriel(historico) {
-    if (historico.length < 3) return { alvos: null, razao: 'Aguardando histórico para padrão.' };
+function analiseDCC(historico) {
+    if (historico.length < 2) return { alvos: null, razao: 'Aguardando 2 números para padrão DCC.' };
     
-    const padrao = historico.slice(-3).map(n => `${getDuzia(n)}D${getColuna(n)}C`).join(' > ');
-    
-    // Mapeamento de padrões (Baseado nos exemplos que você forneceu)
-    // A lógica real deve ser alimentada por um histórico maior de padrões mapeados.
+    // Mapeamento de padrões (PRECISA SER COMPLETO POR VOCÊ)
+    // Insira aqui as sequências que você catalogou.
     const mapaPadroes = {
-        '1D3C > 3D2C': '2D1C', // Exemplo: 1D+3C na sequência paga 3D+2C, então 3D+2C deve puxar o 2D+1C (sequência lógica).
-        // Adicione mais padrões aqui, ex:
-        // '1D2C > 2D3C': '3D1C',
+        '1D3C > 3D2C': '2D1C', 
+        '2D1C > 3D2C': '1D3C',
+        // Exemplo da regra: 1Dúzia+ 3 Coluna > 2 Dúzia + 1 Coluna
+        // Na sequência paga 3 Dúzia + 2 Coluna
+        // Se a sequência for 1D3C > 2D1C, a previsão é 3D2C
+        '1D3C > 2D1C': '3D2C', 
+        // Adicione seus padrões aqui...
     };
     
-    const padraoBusca = historico.slice(-2).map(n => `${getDuzia(n)}D${getColuna(n)}C`).join(' > ');
+    // Pega os 2 últimos números
+    const ultimos2 = historico.slice(-2);
+    // Forma a chave de busca (ex: '1D3C > 3D2C')
+    const padraoBusca = ultimos2.map(n => `${getDuzia(n)}D${getColuna(n)}C`).join(' > ');
     
     if (mapaPadroes[padraoBusca]) {
         const proximo = mapaPadroes[padraoBusca]; // Ex: "2D1C"
-        const [d, c] = proximo.match(/\d/g).map(Number); // [2, 1]
+        // Extrai a Dúzia (d) e a Coluna (c)
+        const [d, c] = proximo.match(/\d/g).map(Number); 
         
-        // Encontra todos os números que pertencem à 2ª Dúzia E 1ª Coluna
+        // Encontra todos os números que pertencem à Dúzia E Coluna previstas
         let alvos = [];
         for (let n = 1; n <= 36; n++) {
             if (getDuzia(n) === d && getColuna(n) === c) {
@@ -169,9 +179,9 @@ function analiseGabriel(historico) {
         }
         
         return {
-            alvos: alvos, // [2, 5, 8, 11] se fosse 1D2C
-            protecoes: [...alvos, 0],
-            razao: `Padrão Gabriel (Sequência ${padraoBusca}) -> Alvo ${proximo}`
+            alvos: alvos, 
+            protecoes: [0], // Proteção 0 conforme regra original (4 fichas + 0)
+            razao: `Gatilho 2 (Sequência DCC ${padraoBusca}) -> Alvo ${proximo}`
         };
     }
 
@@ -179,30 +189,50 @@ function analiseGabriel(historico) {
 }
 
 /**
- * 3. Lógica Ryan: Análise Estelar/Gêmeos/Vizinhos (Trincas)
- * - Busca: Trinca A > X > B e relações de vizinhança.
- * - Simulação complexa: Apenas focaremos na catalogação simples de vizinhos dos 3 antes e 3 depois de um alvo.
+ * [cite_start]Gatilho 3 - Padrão Gêmeo + Espelho (Ryan)[span_6](end_span)
+ * Busca: Número analisado aparece 3x mostrando pontos em comum (região/vizinhos).
  */
-function analiseRyan(historico) {
-    if (historico.length < 7) return { alvos: null, razao: 'Aguardando histórico para trinca completa.' };
+function analiseGE(historico) {
+    if (historico.length < MIN_RODADAS) return { alvos: null, razao: 'Aguardando histórico completo para análise Estelar.' };
     
-    const alvo = historico[historico.length - 4]; // O número no centro da trinca 3 antes/3 depois
+    // Lógica Ryan: Busca por um número (alvoX) que apareceu 3 ou mais vezes
+    [span_7](start_span)// no histórico completo e que possui vizinhos/regiões comuns[span_7](end_span).
+    
+    const contagem = historico.reduce((acc, num) => {
+        acc[num] = (acc[num] || 0) + 1;
+        return acc;
+    }, {});
+    
+    // Simula a busca de números que apareceram 3x (o gatilho Estelar/Gêmeo)
+    const alvosPotenciais = Object.keys(contagem).filter(n => contagem[n] >= 3).map(Number);
 
-    // Exemplo: Simular a busca do alvo 13 na região 36, 27 (como no seu exemplo)
-    if (historico.includes(36) && historico.includes(27) && getVizinhosRace(alvo).includes(36)) {
+    if (alvosPotenciais.length > 0) {
+        // Se um alvo potencial for encontrado, assume-se que a catalogação manual
+        // já determinou o alvo real (que é a parte mais complexa da sua estratégia)
+        
+        // Exemplo: Se o 19 e o 13 são alvos de 3x e possuem regiões em comum
+        if (alvosPotenciais.includes(19) && alvosPotenciais.includes(13)) {
+             return {
+                alvos: [13, 27], // Alvos finais (13 OU 27) conforme seu exemplo
+                protecoes: [36, 0], 
+                razao: `Gatilho 3 (Trinca do 19 e 13 Ativa) -> Alvos 13/27`
+            };
+        }
+
         return {
-            alvos: [13, 27], // Alvos sugeridos 13 OU 27
-            protecoes: [36, 0], // Proteção nos vizinhos em comum
-            razao: `Gatilho Ryan (Alvo ${alvo} puxa 13/27 por vizinhança)`
+             alvos: alvosPotenciais.slice(0, 3), // Se a lógica de vizinhos não se aplicar, sugere os que saíram 3x
+             protecoes: [0],
+             razao: `Gatilho 3 (Número(s) ${alvosPotenciais.slice(0, 3).join(', ')} apareceram 3x. Cataloque a região).`
         };
     }
     
-    // Como esta lógica depende de um mapeamento visual/histórico de Gêmeos,
-    // usamos um retorno padrão caso a condição complexa não seja mapeada.
     return { alvos: null };
 }
 
+
+// --------------------------------------------------------------------------
 // --- FUNÇÃO CENTRAL DE ANÁLISE ---
+// --------------------------------------------------------------------------
 
 function gerarAnalise() {
     limparErros();
@@ -219,68 +249,66 @@ function gerarAnalise() {
         return;
     }
 
-    // 1. RODAR AS 3 ANÁLISES (Sempre rodamos nas 3 últimas rodadas ou mais)
-    const resultadoLarissa = analiseLarissa(historicoCompleto);
-    const resultadoGabriel = analiseGabriel(historicoCompleto);
-    const resultadoRyan = analiseRyan(historicoCompleto);
+    // 1. RODAR AS 3 ANÁLISES
+    const rSoma = analiseSoma(historicoCompleto);
+    const rDCC = analiseDCC(historicoCompleto);
+    const rGE = analiseGE(historicoCompleto);
 
     let alvosFinais = new Set();
     let razoes = [];
+    let rodadasEspera = 0;
 
     // 2. INTEGRAÇÃO E PRIORIZAÇÃO
     
-    // A. Prioridade 1: Lógica Larissa (É o gatilho mais específico)
-    if (resultadoLarissa.alvo) {
-        // Alvos: Número alvo + vizinhos de race
-        alvosFinais.add(resultadoLarissa.alvo);
-        resultadoLarissa.vizinhos.forEach(n => alvosFinais.add(n));
-        razoes.push(`Larissa: ${resultadoLarissa.razao}`);
-        
-        // Se este gatilho dispara, usamos ele como principal e adicionamos proteções.
-        const protecoes = [21, 0]; // Proteções fixas conforme regra
-        protecoes.forEach(n => alvosFinais.add(n));
+    // A. Prioridade 1: Gatilho 1 - Soma (Mais específico)
+    if (rSoma.alvo) {
+        alvosFinais.add(rSoma.alvo);
+        rSoma.vizinhos.forEach(n => alvosFinais.add(n));
+        rSoma.protecoes.forEach(n => alvosFinais.add(n));
+        razoes.push(rSoma.razao);
+        rodadasEspera = 4; // 1 entrada + 3 gales
     }
 
-    // B. Prioridade 2: Lógica Gabriel (Dúzia + Coluna)
-    if (resultadoGabriel.alvos) {
-        // Alvos: 4 números da combinação Dúzia/Coluna
-        resultadoGabriel.alvos.forEach(n => alvosFinais.add(n));
-        razoes.push(`Gabriel: ${resultadoGabriel.razao}`);
+    // B. Prioridade 2: Gatilho 2 - Dúzia + Coluna
+    if (rDCC.alvos) {
+        rDCC.alvos.forEach(n => alvosFinais.add(n));
+        rDCC.protecoes.forEach(n => alvosFinais.add(n));
+        razoes.push(rDCC.razao);
+        if (rodadasEspera === 0) rodadasEspera = 4;
     }
 
-    // C. Prioridade 3: Lógica Ryan (Estelar/Gêmeos)
-    if (resultadoRyan.alvos) {
-        // Alvos: Números sugeridos por Ryan (13, 27, etc.)
-        resultadoRyan.alvos.forEach(n => alvosFinais.add(n));
-        razoes.push(`Ryan: ${resultadoRyan.razao}`);
+    // C. Prioridade 3: Gatilho 3 - Gêmeo + Espelho
+    if (rGE.alvos) {
+        rGE.alvos.forEach(n => alvosFinais.add(n));
+        rGE.protecoes.forEach(n => alvosFinais.add(n));
+        razoes.push(rGE.razao);
+        if (rodadasEspera === 0) rodadasEspera = 4;
     }
 
     // 3. CONSOLIDAÇÃO FINAL
     
     if (alvosFinais.size === 0) {
-        document.getElementById('detalhesSinal').textContent = "Nenhum gatilho detectado. Aguardando entrada.";
+        document.getElementById('detalhesSinal').textContent = "Nenhum gatilho detectado. Aguardando a sequência exata.";
         document.getElementById('alvosSugeridos').textContent = "0";
         document.getElementById('rodadasEspera').textContent = "Apostar até 0 Rodadas";
+        document.getElementById('neraDetalhes').textContent = `NERA/SGR/Trincas Ativas: 0`;
         return;
     }
 
-    const alvosLista = Array.from(alvosFinais).sort((a, b) => a - b).filter(n => n !== 0); // Exclui o 0 da lista principal, pois é proteção
-    
-    // Gestão da sequência (Gestao de sequência: 1 entrada e 3 gales)
-    const rodadasEspera = 4; // 1 entrada + 3 gales
+    const alvosLista = Array.from(alvosFinais).sort((a, b) => a - b).filter(n => n !== 0); 
+    const isZeroProtected = alvosFinais.has(0);
     
     document.getElementById('detalhesSinal').textContent = razoes.join(' | ');
-    document.getElementById('alvosSugeridos').textContent = alvosLista.join(', ') + (alvosFinais.has(0) ? ' (Proteção 0)' : '');
+    document.getElementById('alvosSugeridos').textContent = alvosLista.join(', ') + (isZeroProtected ? ' (PROTEÇÃO 0)' : '');
     document.getElementById('rodadasEspera').textContent = `Apostar até ${rodadasEspera} Rodadas (1 Entrada + 3 Gales)`;
-    document.getElementById('neraDetalhes').textContent = `NERA/SGR/Trincas ativas: ${razoes.length}`;
+    document.getElementById('neraDetalhes').textContent = `3 Sistemas Rodando. Gatilhos Ativos: ${razoes.length}`;
 
     exibirDisplayStatus("Alerta de gatilho confirmado para entrada.", true);
 }
 
-// --- FUNÇÕES DE INTERATIVIDADE E EVENTOS ---
-
-// (Mantidas as funções de carregarBase, processarNovoNumero, renderizarGradeRoleta, initSimulador)
-// ... (código das funções de interatividade) ...
+// --------------------------------------------------------------------------
+// --- FUNÇÕES DE INTERATIVIDADE E INICIALIZAÇÃO (MANTIDAS) ---
+// --------------------------------------------------------------------------
 
 function atualizarLinhaDoTempo() {
     const timelineDiv = document.getElementById('historicoTimeline');
