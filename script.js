@@ -10,7 +10,7 @@ const RACE_SEQUENCE = [
     16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26
 ];
 
-// Mapeamento de Cores e Propriedades da Roleta (MANTIDO)
+// Mapeamento de Cores e Propriedades da Roleta
 const CORES_ROLETA = {
     0: 'zero', 32: 'vermelho', 15: 'preto', 19: 'vermelho', 4: 'preto', 21: 'vermelho',
     2: 'preto', 25: 'vermelho', 17: 'preto', 34: 'vermelho', 6: 'preto', 27: 'vermelho',
@@ -21,27 +21,20 @@ const CORES_ROLETA = {
     26: 'preto'
 };
 
-// Mapeamento de Vizinhos de Race (MANTIDO - DEVE SER COMPLETO POR VOCÊ)
+// Mapeamento de Vizinhos de Race (DEVE SER COMPLETO POR VOCÊ)
 const VIZINHOS_RACE = {
     0: [3, 26, 32, 15], 1: [20, 33, 16], 2: [25, 21, 4], 3: [26, 35, 23], 4: [2, 21, 19],
     12: [35, 28], 13: [27, 36], 15: [0, 32, 19], 17: [34, 6], 21: [2, 4, 19, 25], 24: [16, 33, 1],
     27: [13, 36], 28: [12, 35], 32: [0, 15, 19], 35: [12, 28], 36: [13, 27]
 };
 
-// --- FUNÇÕES AUXILIARES DE PROPRIEDADE (MANTIDAS) ---
+// --- FUNÇÕES AUXILIARES DE PROPRIEDADE ---
 
 function getDuzia(numero) {
     if (numero >= 1 && numero <= 12) return 1;
     if (numero >= 13 && numero <= 24) return 2;
     if (numero >= 25 && numero <= 36) return 3;
-    return 0;
-}
-
-function getColuna(numero) {
-    if (numero === 0) return 0;
-    if (numero % 3 === 1) return 1;
-    if (numero % 3 === 2) return 2;
-    return 3;
+    return 0; 
 }
 
 function getCor(numero) {
@@ -52,7 +45,21 @@ function getVizinhosRace(numero) {
     return VIZINHOS_RACE[numero] || [];
 }
 
-// --- FUNÇÕES DE UTILIDADE E ARMAZENAMENTO (MANTIDAS) ---
+// Função Auxiliar para o Cálculo da Soma (Mantida)
+function calcularAlvoSoma(n1, n2, n3) {
+    const soma = n1 + n2 + n3;
+    let alvo = soma;
+    if (soma > 36) {
+        alvo = String(soma).split('').reduce((acc, digit) => acc + parseInt(digit), 0);
+        if (alvo > 36) {
+             alvo = String(alvo).split('').reduce((acc, digit) => acc + parseInt(digit), 0);
+        }
+    }
+    return alvo === 0 ? 12 : alvo; 
+}
+
+// --- FUNÇÕES DE UTILIDADE E ARMAZENAMENTO (Mantidas) ---
+// ... (exibirDisplayStatus, exibirErro, limparErros, salvarHistorico, carregarHistorico) ...
 
 function exibirDisplayStatus(mensagem, sucesso = false) {
     const statusSpan = document.getElementById('statusDisplay');
@@ -97,67 +104,154 @@ function carregarHistorico(sessao) {
     }
 }
 
-// --- FUNÇÕES DE ANÁLISE ESPECÍFICAS (GATILHOS - MANTIDAS) ---
-// ... (analiseSoma, analiseDCC, analiseGE) ...
 
+// --------------------------------------------------------------------------
+// --- FUNÇÕES DE ANÁLISE ESPECÍFICAS (COM LÓGICA DE PROXIMIDADE) ---
+// --------------------------------------------------------------------------
+
+/**
+ * Gatilho 1 - A Soma dos 3 Números (Larissa)
+ * Sequência exata: Vermelho 3D -> Preto 2D -> Preto 2D (ALTA)
+ * Sequências proximais: (BAIXA)
+ */
 function analiseSoma(historico) {
-    if (historico.length < 3) return { alvo: null, razao: 'Aguardando sequência 3 números.' };
+    if (historico.length < 3) return { alvo: null, confianca: 'NENHUM' };
+    
     const [n1, n2, n3] = historico.slice(-3);
+    
+    // --- Definições de Propriedades ---
+    // Gatilho ALTA
     const n1_vermelho_3d = getCor(n1) === 'vermelho' && getDuzia(n1) === 3;
     const n2_preto_2d = getCor(n2) === 'preto' && getDuzia(n2) === 2;
     const n3_preto_2d = getCor(n3) === 'preto' && getDuzia(n3) === 2;
+    
+    // Near Miss (Para Confiança BAIXA)
+    const n1_vermelho_near = getCor(n1) === 'vermelho' && (getDuzia(n1) === 1 || getDuzia(n1) === 2); // Vermelho, mas D1 ou D2
+    const n3_preto_near = getCor(n3) === 'preto' && (getDuzia(n3) === 1 || getDuzia(n3) === 3); // Preto, mas D1 ou D3
+
+    let alvo = null;
+    let vizinhos = [];
+
+    // --- 1. ALTA CONFIANÇA (Gatilho Exato) ---
     if (n1_vermelho_3d && n2_preto_2d && n3_preto_2d) {
-        const soma = n1 + n2 + n3;
-        let alvo = soma;
-        if (soma > 36) {
-            alvo = String(soma).split('').reduce((acc, digit) => acc + parseInt(digit), 0);
-            if (alvo > 36) { alvo = String(alvo).split('').reduce((acc, digit) => acc + parseInt(digit), 0); }
-        }
-        const vizinhos = getVizinhosRace(alvo);
+        alvo = calcularAlvoSoma(n1, n2, n3);
+        vizinhos = getVizinhosRace(alvo);
         return {
-            alvo: alvo, vizinhos: vizinhos, protecoes: [21, 0],
-            razao: `Gatilho 1 (Soma ${n1}+${n2}+${n3}=${soma}) -> Alvo ${alvo} + Vizinhos de Race`
+            alvo: [alvo, ...vizinhos],
+            protecoes: [21, 0],
+            confianca: 'ALTA',
+            razao: `Gatilho 1 EXATO (R3D>P2D>P2D) -> Alvo ${alvo}`
         };
     }
-    return { alvo: null };
+    
+    // --- 2. BAIXA CONFIANÇA (Cenário B: N3 Miss - P2D erra para D1 ou D3) ---
+    if (n1_vermelho_3d && n2_preto_2d && n3_preto_near) {
+        alvo = calcularAlvoSoma(n1, n2, n3);
+        vizinhos = getVizinhosRace(alvo);
+        return {
+            alvo: [alvo, ...vizinhos],
+            protecoes: [0],
+            confianca: 'BAIXA',
+            razao: `Gatilho 1 Atenção (N3 Miss: R3D>P2D>P_Near)`
+        };
+    }
+    
+    // --- 3. BAIXA CONFIANÇA (Cenário C: N1 Miss - R3D erra para D1 ou D2) ---
+    if (n1_vermelho_near && n2_preto_2d && n3_preto_2d) {
+        alvo = calcularAlvoSoma(n1, n2, n3);
+        vizinhos = getVizinhosRace(alvo);
+        return {
+            alvo: [alvo, ...vizinhos],
+            protecoes: [0],
+            confianca: 'BAIXA',
+            razao: `Gatilho 1 Atenção (N1 Miss: R_Near>P2D>P2D)`
+        };
+    }
+
+    return { alvo: null, confianca: 'NENHUM' };
 }
 
+/**
+ * Gatilho 2 - Padrão de Dúzia + Coluna (Gabriel)
+ * Retorna MÉDIA em caso de acerto exato (já que é um padrão catalogado).
+ */
 function analiseDCC(historico) {
-    if (historico.length < 2) return { alvos: null, razao: 'Aguardando 2 números para padrão DCC.' };
-    const mapaPadroes = { '1D3C > 3D2C': '2D1C', '2D1C > 3D2C': '1D3C', '1D3C > 2D1C': '3D2C' };
+    if (historico.length < 2) return { alvos: null, confianca: 'NENHUM' };
+    
+    const getColuna = (n) => { if (n === 0) return 0; if (n % 3 === 1) return 1; if (n % 3 === 2) return 2; return 3; };
+
+    const mapaPadroes = { 
+        '1D3C > 3D2C': '2D1C', '2D1C > 3D2C': '1D3C', '1D3C > 2D1C': '3D2C' 
+    };
+    
     const ultimos2 = historico.slice(-2);
     const padraoBusca = ultimos2.map(n => `${getDuzia(n)}D${getColuna(n)}C`).join(' > ');
+    
     if (mapaPadroes[padraoBusca]) {
         const proximo = mapaPadroes[padraoBusca];
-        const [d, c] = proximo.match(/\d/g).map(Number);
+        const [d, c] = proximo.match(/\d/g).map(Number); 
+        
         let alvos = [];
         for (let n = 1; n <= 36; n++) {
-            if (getDuzia(n) === d && getColuna(n) === c) { alvos.push(n); }
+            if (getDuzia(n) === d && getColuna(n) === c) {
+                alvos.push(n);
+            }
         }
+        
         return {
-            alvos: alvos, protecoes: [0],
-            razao: `Gatilho 2 (Sequência DCC ${padraoBusca}) -> Alvo ${proximo}`
+            alvos: alvos, 
+            protecoes: [0], 
+            confianca: 'MÉDIA',
+            razao: `Gatilho 2 (Sequência DCC ${padraoBusca})`
         };
     }
-    return { alvos: null };
+
+    return { alvos: null, confianca: 'NENHUM' };
 }
 
+/**
+ * Gatilho 3 - Padrão Gêmeo + Espelho (Ryan)
+ * Retorna MÉDIA em caso de acerto exato (catalogação manual).
+ */
 function analiseGE(historico) {
-    if (historico.length < MIN_RODADAS) return { alvos: null, razao: 'Aguardando histórico completo para análise Estelar.' };
-    const contagem = historico.reduce((acc, num) => { acc[num] = (acc[num] || 0) + 1; return acc; }, {});
+    if (historico.length < MIN_RODADAS) return { alvos: null, confianca: 'NENHUM' };
+    
+    const contagem = historico.reduce((acc, num) => {
+        acc[num] = (acc[num] || 0) + 1;
+        return acc;
+    }, {});
+    
     const alvosPotenciais = Object.keys(contagem).filter(n => contagem[n] >= 3).map(Number);
 
     if (alvosPotenciais.length > 0) {
+        // Exemplo da regra: Se 19 e 13 saíram 3x (trinca) e são vizinhos no prato, ativam 13/27
         if (alvosPotenciais.includes(19) && alvosPotenciais.includes(13)) {
-             return { alvos: [13, 27], protecoes: [36, 0], razao: `Gatilho 3 (Trinca do 19 e 13 Ativa) -> Alvos 13/27` };
+             return {
+                alvos: [13, 27], 
+                protecoes: [36, 0], 
+                confianca: 'MÉDIA',
+                razao: `Gatilho 3 (Trinca do 19 e 13 Ativa)`
+            };
         }
-        return {
-             alvos: alvosPotenciais.slice(0, 3), protecoes: [0],
-             razao: `Gatilho 3 (Número(s) ${alvosPotenciais.slice(0, 3).join(', ')} apareceram 3x. Cataloque a região).`
-        };
+        
+        // Se a trinca existe mas não a confluência de vizinhos catalogada.
+        if (alvosPotenciais.length >= 1) {
+            return {
+                alvos: alvosPotenciais.slice(0, 3), 
+                protecoes: [0],
+                confianca: 'BAIXA', // Nível BAIXO se só tiver a trinca, mas não a região catalogada
+                razao: `Gatilho 3 Atenção (Trinca(s) ${alvosPotenciais.slice(0, 3).join(', ')} Ativas)`
+            };
+        }
     }
-    return { alvos: null };
+    
+    return { alvos: null, confianca: 'NENHUM' };
 }
+
+
+// --------------------------------------------------------------------------
+// --- FUNÇÃO CENTRAL DE ANÁLISE ---
+// --------------------------------------------------------------------------
 
 function gerarAnalise() {
     limparErros();
@@ -167,65 +261,158 @@ function gerarAnalise() {
         return;
     }
 
-    // A análise só é gerada se tivermos a base mínima.
     if (historicoCompleto.length < MIN_RODADAS) {
         document.getElementById('detalhesSinal').textContent = `Carregue o histórico base (mínimo ${MIN_RODADAS}) para iniciar a análise.`;
         document.getElementById('alvosSugeridos').textContent = "0";
         document.getElementById('rodadasEspera').textContent = "Aguardando dados.";
+        document.getElementById('neraDetalhes').textContent = `Nível de Confiança: N/A | Sistemas Ativos: 0`;
         return;
     }
 
+    // 1. RODAR AS 3 ANÁLISES
     const rSoma = analiseSoma(historicoCompleto);
     const rDCC = analiseDCC(historicoCompleto);
     const rGE = analiseGE(historicoCompleto);
 
-    let alvosFinais = new Set();
-    let razoes = [];
+    // Estruturas de consolidação
+    let alvosExibidos = new Set();
+    let razoesExibidas = [];
     let rodadasEspera = 0;
+    let activeSystems = 0;
+    let nivelConfianca = 'NENHUM';
 
-    // INTEGRAÇÃO E PRIORIZAÇÃO (MANTIDA)
-    if (rSoma.alvo) {
-        alvosFinais.add(rSoma.alvo); rSoma.vizinhos.forEach(n => alvosFinais.add(n));
-        rSoma.protecoes.forEach(n => alvosFinais.add(n)); razoes.push(rSoma.razao); rodadasEspera = 4;
+    // 2. CONSOLIDAÇÃO COM PRIORIDADE (ALTA > MÉDIA > BAIXA)
+
+    // A. Acumular Alvos ALTA/MÉDIA/BAIXA
+    const resultados = [rSoma, rDCC, rGE].filter(r => r.alvo !== null);
+    activeSystems = resultados.length;
+
+    // Prioridade ALTA
+    const resultadosAlta = resultados.filter(r => r.confianca === 'ALTA');
+    if (resultadosAlta.length > 0) {
+        nivelConfianca = 'ALTA';
+        resultadosAlta.forEach(r => {
+            r.alvo.forEach(n => alvosExibidos.add(n));
+            r.protecoes.forEach(n => alvosExibidos.add(n));
+            razoesExibidas.push(r.razao);
+        });
+        rodadasEspera = 4;
     }
 
-    if (rDCC.alvos) {
-        rDCC.alvos.forEach(n => alvosFinais.add(n)); rDCC.protecoes.forEach(n => alvosFinais.add(n));
-        razoes.push(rDCC.razao); if (rodadasEspera === 0) rodadasEspera = 4;
+    // Prioridade MÉDIA (Só considera se não houver ALTA)
+    if (nivelConfianca !== 'ALTA') {
+        const resultadosMedia = resultados.filter(r => r.confianca === 'MÉDIA');
+        if (resultadosMedia.length > 0) {
+            nivelConfianca = 'MÉDIA';
+            resultadosMedia.forEach(r => {
+                r.alvo.forEach(n => alvosExibidos.add(n));
+                r.protecoes.forEach(n => alvosExibidos.add(n));
+                razoesExibidas.push(r.razao);
+            });
+            rodadasEspera = 4;
+        }
+    }
+    
+    // Prioridade BAIXA (Só considera se não houver ALTA ou MÉDIA)
+    if (nivelConfianca !== 'ALTA' && nivelConfianca !== 'MÉDIA') {
+        const resultadosBaixa = resultados.filter(r => r.confianca === 'BAIXA');
+        if (resultadosBaixa.length > 0) {
+            nivelConfianca = 'BAIXA';
+            resultadosBaixa.forEach(r => {
+                r.alvo.forEach(n => alvosExibidos.add(n));
+                r.protecoes.forEach(n => alvosExibidos.add(n));
+                razoesExibidas.push(r.razao);
+            });
+            // Mantemos rodadasEspera = 4, mas o risco é maior
+            rodadasEspera = 4;
+        }
     }
 
-    if (rGE.alvos) {
-        rGE.alvos.forEach(n => alvosFinais.add(n)); rGE.protecoes.forEach(n => alvosFinais.add(n));
-        razoes.push(rGE.razao); if (rodadasEspera === 0) rodadasEspera = 4;
+    // Se houver confluência entre níveis (ex: Alta + Média), ajusta a razão
+    if (nivelConfianca === 'ALTA' || nivelConfianca === 'MÉDIA') {
+        const razoesAdicionais = resultados.filter(r => r.confianca !== nivelConfianca).map(r => r.razao);
+        razoesExibidas = razoesExibidas.concat(razoesAdicionais);
     }
 
-    if (alvosFinais.size === 0) {
+    // 3. CONSOLIDAÇÃO FINAL E EXIBIÇÃO
+    
+    if (alvosExibidos.size === 0) {
         document.getElementById('detalhesSinal').textContent = "Nenhum gatilho detectado. Aguardando a sequência exata.";
         document.getElementById('alvosSugeridos').textContent = "0";
         document.getElementById('rodadasEspera').textContent = "Apostar até 0 Rodadas";
-        document.getElementById('neraDetalhes').textContent = `3 Sistemas Rodando. Gatilhos Ativos: 0`;
+        document.getElementById('neraDetalhes').textContent = `Nível de Confiança: ${nivelConfianca} | Sistemas Ativos: ${activeSystems}`;
         return;
     }
 
-    const alvosLista = Array.from(alvosFinais).sort((a, b) => a - b).filter(n => n !== 0); 
-    const isZeroProtected = alvosFinais.has(0);
+    const alvosLista = Array.from(alvosExibidos).sort((a, b) => a - b).filter(n => n !== 0); 
+    const isZeroProtected = alvosExibidos.has(0);
     
-    document.getElementById('detalhesSinal').textContent = razoes.join(' | ');
+    document.getElementById('detalhesSinal').textContent = razoesExibidas.join(' | ');
     document.getElementById('alvosSugeridos').textContent = alvosLista.join(', ') + (isZeroProtected ? ' (PROTEÇÃO 0)' : '');
     document.getElementById('rodadasEspera').textContent = `Apostar até ${rodadasEspera} Rodadas (1 Entrada + 3 Gales)`;
-    document.getElementById('neraDetalhes').textContent = `3 Sistemas Rodando. Gatilhos Ativos: ${razoes.length}`;
+    document.getElementById('neraDetalhes').textContent = `Nível de Confiança: ${nivelConfianca} | Sistemas Ativos: ${activeSystems}`;
 
-    exibirDisplayStatus("Alerta de gatilho confirmado para entrada.", true);
+    exibirDisplayStatus(`Alerta de gatilho ${nivelConfianca} confirmado para entrada.`, true);
 }
 
 
-// --- FUNÇÕES DE INTERATIVIDADE E INICIALIZAÇÃO ---
+// --- FUNÇÕES DE INTERATIVIDADE E INICIALIZAÇÃO (Mantidas) ---
 
-/**
- * Função processarNovoNumero corrigida:
- * Permite a adição de números da grade mesmo sem a base de 100 rodadas.
- * A análise só será disparada, mas com erro, se não houver a base.
- */
+function atualizarLinhaDoTempo() {
+    const statusP = document.getElementById('historicoRecenteStatus');
+    const totalRodadasSpan = document.getElementById('totalRodadas');
+
+    if (!statusP || !totalRodadasSpan) return;
+
+    totalRodadasSpan.textContent = historicoCompleto.length;
+
+    if (historicoCompleto.length === 0) {
+        statusP.innerHTML = `<p style="color:#f39c12; margin:0;">Nenhum número no histórico.</p>`;
+        return;
+    }
+    
+    const ultimos30 = historicoCompleto.slice(-30);
+    
+    let html = ultimos30.map(numero => {
+        const num = parseInt(numero, 10); 
+        const cor = CORES_ROLETA[num] || 'preto';
+        const classeCor = num === 0 ? 'zero' : cor; 
+        
+        return `<span class="botao-numero ${classeCor}" data-numero="${num}">${num}</span>`;
+    }).join(' ');
+
+    statusP.innerHTML = html;
+}
+
+function carregarBase() {
+    limparErros();
+    const input = document.getElementById('historicoBaseInput').value;
+    
+    if (!sessaoAtual) {
+        exibirErro("Inicie a sessão no Passo 0 antes de carregar o histórico.");
+        return;
+    }
+
+    let novosNumeros = input
+        .replace(/[^0-9, \n]/g, '')
+        .split(/[\s,]+/)
+        .filter(n => n !== '')
+        .map(n => parseInt(n, 10))
+        .filter(n => n >= 0 && n <= 36);
+
+    if (novosNumeros.length < MIN_RODADAS) {
+        exibirErro(`O histórico deve ter no mínimo ${MIN_RODADAS} números. Você tem ${novosNumeros.length}.`);
+        return;
+    }
+
+    historicoCompleto = novosNumeros;
+    salvarHistorico(sessaoAtual, historicoCompleto);
+    
+    atualizarLinhaDoTempo();
+    gerarAnalise();
+    exibirDisplayStatus("Base carregada e salva com sucesso!", true);
+}
+
 function processarNovoNumero(numero) {
     limparErros();
     
@@ -234,26 +421,19 @@ function processarNovoNumero(numero) {
         return;
     }
     
-    // Adiciona o número SEM BLOQUEIO, mesmo que o histórico não tenha 100.
     historicoCompleto.push(parseInt(numero, 10));
     salvarHistorico(sessaoAtual, historicoCompleto);
     
     atualizarLinhaDoTempo();
-    // A função gerarAnalise() irá verificar se o MIN_RODADAS foi atingido.
     gerarAnalise(); 
 }
 
 
-/**
- * Função renderizarGradeRoleta corrigida:
- * Usa a sequência da Race Track da roleta Europeia.
- */
 function renderizarGradeRoleta(gradeRoleta) {
     if (!gradeRoleta) return; 
 
     let html = '';
     
-    // Agora renderiza na ordem da RACE_SEQUENCE
     RACE_SEQUENCE.forEach(i => {
         const cor = CORES_ROLETA[i];
         html += `<button class="botao-numero ${cor}" data-numero="${i}">${i}</button>`;
