@@ -62,7 +62,6 @@ function calcularAlvoSoma(n1, n2, n3) {
 
 function exibirDisplayStatus(mensagem, sucesso = false) {
     const statusSpan = document.getElementById('statusDisplay');
-    // Esta verificação garante que não haverá o erro de 'null' se o elemento estiver faltando
     if (statusSpan) { 
         statusSpan.textContent = `Status: ${mensagem}`;
         statusSpan.style.color = sucesso ? 'lightgreen' : '#ffc107';
@@ -257,7 +256,8 @@ function gerarAnalise() {
     limparErros();
     
     if (!sessaoAtual) {
-        document.getElementById('detalhesSinal').textContent = "Inicie a sessão no Passo 0.";
+        const detalhesSinal = document.getElementById('detalhesSinal');
+        if (detalhesSinal) detalhesSinal.textContent = "Inicie a sessão no Passo 0.";
         return;
     }
 
@@ -370,7 +370,8 @@ function atualizarLinhaDoTempo() {
         return;
     }
     
-    const ultimos30 = historicoCompleto.slice(-30);
+    // *** CORREÇÃO: Pega os últimos 30 e INVERTE a ordem para o mais recente ficar à esquerda ***
+    const ultimos30 = historicoCompleto.slice(-30).reverse();
     
     let html = ultimos30.map(numero => {
         const num = parseInt(numero, 10); 
@@ -465,10 +466,10 @@ function initSimulador() {
         atualizarLinhaDoTempo();
         gerarAnalise(); 
     } else {
-        exibirDisplayStatus('Inicie uma sessão no Passo 0 para começar a analisar.');
+        const statusDisplay = document.getElementById('statusDisplay');
+        if(statusDisplay) statusDisplay.textContent = 'Inicie uma sessão no Passo 0 para começar a analisar.';
     }
 
-    // Adiciona o listener para o botão "Gerar Análise"
     const btnGerarAnalise = document.getElementById('btnGerarAnalise');
     if (btnGerarAnalise) {
         btnGerarAnalise.addEventListener('click', gerarAnalise);
