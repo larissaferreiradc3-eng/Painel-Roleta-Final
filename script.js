@@ -58,12 +58,12 @@ function calcularAlvoSoma(n1, n2, n3) {
     return alvo === 0 ? 12 : alvo; 
 }
 
-// --- FUNÇÕES DE UTILIDADE E ARMAZENAMENTO (Mantidas) ---
-// ... (exibirDisplayStatus, exibirErro, limparErros, salvarHistorico, carregarHistorico) ...
+// --- FUNÇÕES DE UTILIDADE E ARMAZENAMENTO ---
 
 function exibirDisplayStatus(mensagem, sucesso = false) {
     const statusSpan = document.getElementById('statusDisplay');
-    if (statusSpan) {
+    // Esta verificação garante que não haverá o erro de 'null' se o elemento estiver faltando
+    if (statusSpan) { 
         statusSpan.textContent = `Status: ${mensagem}`;
         statusSpan.style.color = sucesso ? 'lightgreen' : '#ffc107';
         statusSpan.style.display = 'block';
@@ -292,8 +292,8 @@ function gerarAnalise() {
     if (resultadosAlta.length > 0) {
         nivelConfianca = 'ALTA';
         resultadosAlta.forEach(r => {
-            r.alvo.forEach(n => alvosExibidos.add(n));
-            r.protecoes.forEach(n => alvosExibidos.add(n));
+            if (r.alvo) r.alvo.forEach(n => alvosExibidos.add(n));
+            if (r.protecoes) r.protecoes.forEach(n => alvosExibidos.add(n));
             razoesExibidas.push(r.razao);
         });
         rodadasEspera = 4;
@@ -305,8 +305,8 @@ function gerarAnalise() {
         if (resultadosMedia.length > 0) {
             nivelConfianca = 'MÉDIA';
             resultadosMedia.forEach(r => {
-                r.alvo.forEach(n => alvosExibidos.add(n));
-                r.protecoes.forEach(n => alvosExibidos.add(n));
+                if (r.alvo) r.alvo.forEach(n => alvosExibidos.add(n));
+                if (r.protecoes) r.protecoes.forEach(n => alvosExibidos.add(n));
                 razoesExibidas.push(r.razao);
             });
             rodadasEspera = 4;
@@ -319,11 +319,10 @@ function gerarAnalise() {
         if (resultadosBaixa.length > 0) {
             nivelConfianca = 'BAIXA';
             resultadosBaixa.forEach(r => {
-                r.alvo.forEach(n => alvosExibidos.add(n));
-                r.protecoes.forEach(n => alvosExibidos.add(n));
+                if (r.alvo) r.alvo.forEach(n => alvosExibidos.add(n));
+                if (r.protecoes) r.protecoes.forEach(n => alvosExibidos.add(n));
                 razoesExibidas.push(r.razao);
             });
-            // Mantemos rodadasEspera = 4, mas o risco é maior
             rodadasEspera = 4;
         }
     }
@@ -356,7 +355,7 @@ function gerarAnalise() {
 }
 
 
-// --- FUNÇÕES DE INTERATIVIDADE E INICIALIZAÇÃO (Mantidas) ---
+// --- FUNÇÕES DE INTERATIVIDADE E INICIALIZAÇÃO ---
 
 function atualizarLinhaDoTempo() {
     const statusP = document.getElementById('historicoRecenteStatus');
@@ -469,6 +468,12 @@ function initSimulador() {
         exibirDisplayStatus('Inicie uma sessão no Passo 0 para começar a analisar.');
     }
 
+    // Adiciona o listener para o botão "Gerar Análise"
+    const btnGerarAnalise = document.getElementById('btnGerarAnalise');
+    if (btnGerarAnalise) {
+        btnGerarAnalise.addEventListener('click', gerarAnalise);
+    }
+    
     document.getElementById('btnCarregarBase').addEventListener('click', carregarBase);
 
     document.getElementById('btnIniciarSessao').addEventListener('click', () => {
